@@ -1,0 +1,398 @@
+/*
+Gramatica para el Robot:
+Autor: Alejandro Arango
+Modificado por: Silvia Takahashi
+Modificado por: Juan Pablo Morales.
+Agregadas producciones para manejar globos
+Modificado por Silvia Takahashi
+
+
+ **/
+
+
+options 
+{
+  
+	LOOKAHEAD=1; 
+	IGNORE_CASE=true;
+	STATIC = false;
+	
+}
+   
+
+PARSER_BEGIN(Robot)
+
+package uniandes.lym.robot.control;
+
+import uniandes.lym.robot.kernel.*;
+import uniandes.lym.robot.view.Console;
+ 
+import java.awt.Point;
+import java.io.*;
+import java.util.Vector;
+import java.util.LinkedList;
+
+@SuppressWarnings("serial")
+public class Robot 
+{
+
+
+	private RobotWorldDec world;
+	
+	
+	void setWorld(RobotWorld w) {
+		world = (RobotWorldDec) w;	
+	}
+
+	String salida=new String();
+}
+PARSER_END(Robot)
+
+SKIP:
+{
+	" "
+	|	"\r"
+	|	"\t"
+	| "\n"
+}
+
+TOKEN : /* PARENTESIS */
+{
+< AC:"[" >
+| < CC:"]" >
+| < BARRA:"|" >
+}
+
+TOKEN : /* PUNTUACION */
+{
+ < COMA :"," >
+| < PUNTO :"." >
+| < DOSPUNTOS:":" >
+| < PUNTOC:";" >
+}
+
+TOKEN: /* Nombres de Comandos */
+{
+
+			<MOV:  "Mov">
+		| 	<RIGHT: "RIGHT">
+		| 	<PUT: "Put">
+		| 	<PICK: "Pick">
+		|  < POP: "Pop" >
+		|  <GO: "GO" >
+        |  < HOP:  "HOP" >		
+
+}
+
+TOKEN: /* Cmds nuevos */
+{
+
+			<AssignTo:  "assignTo">
+		| 	<Goto: "goto">
+		| 	<Move: "move">
+		| 	<Turn: "turn">
+		|  < Face: "face" >
+		|  <Put: "put" >
+        |  < Pick:  "pick" >
+        |  < MoveToThe:  "moveToThe" >
+        |  < MoveInDir:  "moveInDir" >
+        |  < JumpToThe:  "jumpToThe" >
+        |  < JumpInDir:  "jumpInDir" >
+        |  < Nop:  "nop" >
+        	
+}
+
+TOKEN: /* Condicionales */
+{
+
+			<If:  "if">
+		| 	<Then: "then">
+		| 	<Else: "else">
+		| 	<While: "while">
+		|  < Do: "do" >
+		|  <Repeat: "repeat" >
+        	
+}
+
+
+TOKEN: /* Condiciones */
+{
+
+		< COND:
+		| "facing"
+		| "canPut"
+		| "canPick"
+		| "canMoveInDir"
+		|  "canJumpInDir" 
+		|  "canMoveToThe" 
+        |  "canJumpToThe" 
+        |  "not" >
+        	
+}
+
+TOKEN: /*Cardinales/directions*/
+{
+				  <CARD:  ("north" 
+		|   "south"  
+		|    "east"  
+		|    "west"  )>
+		| 	<DIR:  ("front" 
+		|   "right"  
+		|    "left"  
+		|    "back"  )>	
+}
+
+TOKEN:
+{
+		<BALLOONS:  "BALLOONS" >
+		|	<CHIPS:     "CHIPS"  >	
+
+}
+
+TOKEN: /*varios*/
+{
+		<ROBOT_R:  "ROBOT_R" >
+		|	<VARS:     "VARS"  >
+		| < PROCS: "PROCS" >	
+
+}
+
+TOKEN : /* NUM & LETRAS */
+{
+  < NUM : ("-")?(< DIGIT >)+ >
+| < NOM : (< LETTER >)+ >
+| < PAL : "\""(< NOM >|" "|< PUNTO >|< COMA >|< DOSPUNTOS >|< PUNTOC >)+"\"" >
+| < #DIGIT : ["0"-"9"] >
+| < #LETTER : ["a"-"z"] | ["A"-"Z"] | "_" >
+}
+
+
+
+	//boolean command(uniandes.lym.robot.view.Console sistema) :
+	boolean command(Console sistema):
+	{	
+		
+		int x,y;
+		salida=new String();	
+	}
+
+	
+	{
+
+		< ROBOT_R >(varDec())?cuerpo() /* no se como hacer que se guarden globalmente las var*/
+
+	  
+	  /*
+		(		  (
+		   <RIGHT> "(" ")" {world.turnRight();salida = "Command: Turnright";}
+		| 	<MOV>  "(" x=num() ")" {world.moveForward(x,false);salida = "Command: Moveforward ";}  
+		| 	<HOP>  "(" x=num() ")" {world.moveForward(x,true);salida = "Command:Jumpforward ";}
+		| 	<GO>  "(" x=num() "," y=num()")" {world.setPostion(x,y);salida = "Command:GO ";}  
+		|  <PUT> "("  put() ")"					  			
+		|  <PICK> "(" get()  ")"	
+	    |  < POP > "(" x=num() ")" {world.popBalloons(x); salida = "Comando:  Pop";}
+		) ";" 
+
+		{
+		    try {
+	    			 Thread.sleep(900);
+	    	    } catch (InterruptedException e) {
+	    			        System.err.format("IOException: %s%n", e);
+	    		    }
+	    			 
+			sistema.printOutput(salida);
+			return true;
+		})+
+
+    	| <EOF> {return false;} 
+	*/}
+
+/*
+	void put() :
+	{
+		int f=1;	
+	}
+	{
+		( <CHIPS>    "," f=num() {world.putChips(f); salida = "Command:  Put Chips"; })
+		|  	  ( <BALLOONS>   "," f=num() {world.putBalloons(f); salida = "Command:  Put Balloons";})	 
+
+	}
+
+	void get() :
+	{
+		int f=1;	
+	}
+	{
+		( <CHIPS>   "," f=num() {world.pickChips(f);salida = "Command:  Pick chips";})
+		|  	  ( <BALLOONS>   "," f=num() {world.grabBalloons(f);salida="Command:  Pick balloons";})	 
+
+	}
+*/
+	
+	
+
+	/**
+	 * Unsigned decimal number
+	 * @return the corresponding value of the string
+	 * @error  corresponding value is too large
+	 */
+
+	int num() throws Error:
+	{	
+		int total=1;
+	}
+	{
+		<NUM>
+		{
+			try 
+			{
+				total = Integer.parseInt(token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+
+
+	HashMap<String,int> varDec():
+	{ }
+	{
+	< VARS ><PAL >
+	{
+	  vars = new HashMap<String,int>();
+	  String varaibles = token.image;
+	  ArrayList< String> var = varaibles.split(",");
+	  for (String ele : var) {
+	    vars.put(ele,null);
+	  }
+	return vars
+	}
+	
+
+	void cuerpo(vars):
+	{ }
+	{
+	conditional()
+	| loop()
+	| rep()
+	| goto()
+	| move()
+	| turn()
+	| face()
+	| put()
+	| pick()
+	| moveToThe()
+	| moveInDir()
+	| jumpToThe()
+	| jumpInDir()
+	| nop()
+}
+
+	/* definicion estrucutra conds */
+
+	void conditional():
+	{ }
+	{
+	< If ><DOSPUNTOS ><COND ><Then ><DOSPUNTOS >cuerpo()< Else ><DOSPUNTOS >cuerpo()
+	}
+
+	void loop():
+	{ }
+	{
+	< While ><DOSPUNTOS ><COND ><Do ><DOSPUNTOS >cuerpo()
+	}
+
+	void rep():
+	{ }
+	{
+	< Repeat ><DOSPUNTOS >(< NUM>|< VAR >)cuerpo()
+	}
+	
+
+	/* definicion estructura cmds */
+
+	HashMap<String,int > assignTo(varPosibles):
+	{ int val = null;}
+	{
+	< AssignTo ><DOSPUNTOS >(< NUM>|< VAR >)
+	{
+	 val = Integer.parseInt(token.image);
+	}
+	< COMA ><PAL >
+	{
+	String nom = token.image;
+	if (varPosibles.containsKey(nom)) { 
+		varPosibles.put(nom,val);}
+	return varPosibles;
+	}
+	}
+
+	void goto():
+	{ }
+	{
+	< Goto ><DOSPUNTOS >(< NUM>|< VAR >) < COMA>(< NUM>|< VAR >)
+	}
+
+	void move():
+	{ }
+	{
+	< Move ><DOSPUNTOS >(< NUM>|< VAR >)
+	}
+
+	void turn():
+	{ }
+	{
+	< Turn ><DOSPUNTOS ><DIR >
+	}
+
+	void face():
+	{ }
+	{
+	< Face ><DOSPUNTOS ><CARD >
+	}
+
+	void put():
+	{ }
+	{
+	< Put ><DOSPUNTOS >(< NUM>|< VAR >)<COMA >(< BALLOONS >|< CHIPS >)
+	}
+
+	void pick():
+	{ }
+	{
+	< Pick ><DOSPUNTOS >(< NUM>|< VAR >)<COMA >(< BALLOONS >|< CHIPS >)
+	}
+
+	void moveToThe():
+	{ }
+	{
+	< MoveToThe ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><DIR >
+	}
+
+	void moveInDir():
+	{ }
+	{
+	< MoveInDir ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><CARD >
+	}
+
+
+	void jumpToThe():
+	{ }
+	{
+	< JumpToThe ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><DIR >
+	}
+
+	void jumpInDir():
+	{ }
+	{
+	< JumpInDir ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><CARD >
+	}
+
+	void nop():
+	{}
+	{
+	<Nop>
+	}
