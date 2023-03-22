@@ -38,7 +38,12 @@ public class Robot
 
 
 	private RobotWorldDec world;
-	
+
+	static HashMap<String,Integer > Vars= new HashMap<String,Integer >();
+
+	static HashMap<String,String > Funcs= new HashMap<String,Integer >();
+
+	static HashMap<String,Integer > VarsActuales= Vars;
 	
 	void setWorld(RobotWorld w) {
 		world = (RobotWorldDec) w;	
@@ -71,18 +76,6 @@ TOKEN : /* PUNTUACION */
 | < PUNTOC:";" >
 }
 
-TOKEN: /* Nombres de Comandos */
-{
-
-			<MOV:  "Mov">
-		| 	<RIGHT: "RIGHT">
-		| 	<PUT: "Put">
-		| 	<PICK: "Pick">
-		|  < POP: "Pop" >
-		|  <GO: "GO" >
-        |  < HOP:  "HOP" >		
-
-}
 
 TOKEN: /* Cmds nuevos */
 {
@@ -118,21 +111,21 @@ TOKEN: /* Condicionales */
 TOKEN: /* Condiciones */
 {
 
-		< COND:
-		| "facing"
-		| "canPut"
-		| "canPick"
-		| "canMoveInDir"
+		< COND: ("facing" 
+		| "canPut" 
+		| "canPick" 
+		| "canMoveInDir" 
 		|  "canJumpInDir" 
 		|  "canMoveToThe" 
-        |  "canJumpToThe" 
-        |  "not" >
+        |  "canJumpToThe") > 
+        | < NOT:  "not" >
         	
 }
 
 TOKEN: /*Cardinales/directions*/
 {
-				  <CARD:  ("north" 
+		
+		  <CARD:  ("north" 
 		|   "south"  
 		|    "east"  
 		|    "west"  )>
@@ -161,7 +154,7 @@ TOKEN : /* NUM & LETRAS */
 {
   < NUM : ("-")?(< DIGIT >)+ >
 | < NOM : (< LETTER >)+ >
-| < PAL : "\""(< NOM >|" "|< PUNTO >|< COMA >|< DOSPUNTOS >|< PUNTOC >)+"\"" >
+| < PAL : "\""(< NOM >|" "|< PUNTO >| < BARRA >|< COMA >|< PUNTOC >)+"\"" >
 | < #DIGIT : ["0"-"9"] >
 | < #LETTER : ["a"-"z"] | ["A"-"Z"] | "_" >
 }
@@ -173,112 +166,115 @@ TOKEN : /* NUM & LETRAS */
 	{	
 		
 		int x,y;
-		salida=new String();	
+		salida=new String();
+
 	}
 
 	
 	{
 
-		< ROBOT_R >(varDec())?cuerpo() /* no se como hacer que se guarden globalmente las var*/
+		< ROBOT_R >(varDec(Vars))?< PROCS> (funcDef())* < AC >programa()< CC > /* no se como hacer que se guarden globalmente las var*/
 
 	  
-	  /*
-		(		  (
-		   <RIGHT> "(" ")" {world.turnRight();salida = "Command: Turnright";}
-		| 	<MOV>  "(" x=num() ")" {world.moveForward(x,false);salida = "Command: Moveforward ";}  
-		| 	<HOP>  "(" x=num() ")" {world.moveForward(x,true);salida = "Command:Jumpforward ";}
-		| 	<GO>  "(" x=num() "," y=num()")" {world.setPostion(x,y);salida = "Command:GO ";}  
-		|  <PUT> "("  put() ")"					  			
-		|  <PICK> "(" get()  ")"	
-	    |  < POP > "(" x=num() ")" {world.popBalloons(x); salida = "Comando:  Pop";}
-		) ";" 
-
-		{
-		    try {
-	    			 Thread.sleep(900);
-	    	    } catch (InterruptedException e) {
-	    			        System.err.format("IOException: %s%n", e);
-	    		    }
-	    			 
-			sistema.printOutput(salida);
-			return true;
-		})+
-
-    	| <EOF> {return false;} 
-	*/}
-
-/*
-	void put() :
-	{
-		int f=1;	
-	}
-	{
-		( <CHIPS>    "," f=num() {world.putChips(f); salida = "Command:  Put Chips"; })
-		|  	  ( <BALLOONS>   "," f=num() {world.putBalloons(f); salida = "Command:  Put Balloons";})	 
-
 	}
 
-	void get() :
-	{
-		int f=1;	
-	}
-	{
-		( <CHIPS>   "," f=num() {world.pickChips(f);salida = "Command:  Pick chips";})
-		|  	  ( <BALLOONS>   "," f=num() {world.grabBalloons(f);salida="Command:  Pick balloons";})	 
+	/* var dec */
 
-	}
-*/
-	
-	
-
-	/**
-	 * Unsigned decimal number
-	 * @return the corresponding value of the string
-	 * @error  corresponding value is too large
-	 */
-
-	int num() throws Error:
-	{	
-		int total=1;
-	}
-	{
-		<NUM>
-		{
-			try 
-			{
-				total = Integer.parseInt(token.image);
-			} 
-			catch (NumberFormatException ee) 
-			{
-				throw new Error("Number out of bounds: "+token.image+" !!");
-			}
-			return total;
-		}
-	}
-
-
-	HashMap<String,int> varDec():
+	void varDec():
 	{ }
 	{
-	< VARS ><PAL >
+	< VARS >(<NOM > {  String variables = token.image;
+	Vars.put(variables,null);
+
+	} <COMA >)*< NOM >
+	{  String variables = token.image;
+	Vars.put(variables,null);
+	}<PUNTOC >
+
+
+	}
+	/* revision de var */
+
+	void var():
+	{ }
 	{
-	  vars = new HashMap<String,int>();
-	  String varaibles = token.image;
-	  ArrayList< String> var = varaibles.split(",");
-	  for (String ele : var) {
-	    vars.put(ele,null);
+	< NOM > {
+	  	valor = null;
+		if (VarsActuales.ContainsKey(token.image)) {
+		  Integer valor = VarsActuales.getValue(token.image);
+		  if (valor.equals(null)) {
+		    System.out.println("No se ha asignado un valor a la variable");
+			throw new ParseException("Variable vacia");
+		  }
+		}else {
+			System.out.println("Variable llamada antes de ser instanciada");
+			throw new ParseException("Variable no existe");
+		  }
+			
 	  }
-	return vars
 	}
-	
 
-	void cuerpo(vars):
+	/* Func Def */
+
+	void funcDef():
+	{ String nombre = null;
+	Integer count = 0;
+	/*ArrayList< String> varLocales = new ArrayList<String >*/;}
+	{
+	< NOM > { nombre = token.image; }<AC ><BARRA >((< NOM > { count += 1;
+	/*varLocales.add(token.image)*/ VarsActuales.put(nombre,token.image);
+	 }<COMA >)*< NOM> { count += 1;
+	/*varLocales.add(token.image)*/VarsActuales.put(nombre,token.image);
+	Funcs.put(nombre,count);
+	 })?<BARRA >(cuerpo())* { VarsActuales = Vars; }<CC >
+}
+
+	/* programa real */
+
+	void programa():
 	{ }
 	{
-	conditional()
+	((cuerpo() < PUNTOC >|funcionE()< PUNTOC >)*(cuerpo()|funcionE()))?
+	}
+
+	/* Revisar funcion extra */
+
+	void funcionE():
+	{String nomFunc = null;
+	String cuerpoFunc = null;
+	Integer count = 0; }
+	{
+	< NOM > { nomFunc = token.image;
+	if (Funcs.containsKey(nomFunc)) {
+		cuerpoFunc = Funcs.getValue(nomFunc);
+	} else { System.out.println("Funcion llamada antes de declaracion");
+			throw new ParseException("Funcion llamada antes de declaracion"); }
+
+
+	}<DOSPUNTOS >((<NUM > {
+		count +=1;
+		}
+	  <COMA >)*(<NUM >{
+		count +=1;
+		}))?
+	{
+	if (!count.equals(cuerpoFunc)) {
+		System.out.println("Parametros incorrectos");
+		throw new ParseException("Parametros incorrectos");
+	}
+	}
+	}
+
+	/* cuerpo */
+
+	void cuerpo():
+	{ }
+	{
+	(
+	  conditional()
 	| loop()
 	| rep()
-	| goto()
+	| gotof()
 	| move()
 	| turn()
 	| face()
@@ -288,7 +284,7 @@ TOKEN : /* NUM & LETRAS */
 	| moveInDir()
 	| jumpToThe()
 	| jumpInDir()
-	| nop()
+	| nop())
 }
 
 	/* definicion estrucutra conds */
@@ -296,50 +292,51 @@ TOKEN : /* NUM & LETRAS */
 	void conditional():
 	{ }
 	{
-	< If ><DOSPUNTOS ><COND ><Then ><DOSPUNTOS >cuerpo()< Else ><DOSPUNTOS >cuerpo()
+	< If ><DOSPUNTOS >(< NOT >)?<COND ><Then ><DOSPUNTOS >cuerpo()< Else ><DOSPUNTOS >cuerpo()
 	}
 
 	void loop():
 	{ }
 	{
-	< While ><DOSPUNTOS ><COND ><Do ><DOSPUNTOS >cuerpo()
+	< While ><DOSPUNTOS >(< NOT >)?<COND ><Do ><DOSPUNTOS >cuerpo()
 	}
 
 	void rep():
 	{ }
 	{
-	< Repeat ><DOSPUNTOS >(< NUM>|< VAR >)cuerpo()
+	< Repeat ><DOSPUNTOS >(< NUM>|var())cuerpo()
 	}
 	
 
 	/* definicion estructura cmds */
 
-	HashMap<String,int > assignTo(varPosibles):
-	{ int val = null;}
+	void assignTo():
+	{ Integer val = null;}
 	{
-	< AssignTo ><DOSPUNTOS >(< NUM>|< VAR >)
+	< AssignTo ><DOSPUNTOS >(< NUM>|var())
 	{
-	 val = Integer.parseInt(token.image);
+	 Integer val = Integer.parseInt(token.image);
 	}
 	< COMA ><PAL >
 	{
 	String nom = token.image;
-	if (varPosibles.containsKey(nom)) { 
-		varPosibles.put(nom,val);}
-	return varPosibles;
+	if (Vars.containsKey(nom)) { 
+		Vars.put(nom,val);}
 	}
 	}
 
-	void goto():
+	
+
+	void gotof():
 	{ }
 	{
-	< Goto ><DOSPUNTOS >(< NUM>|< VAR >) < COMA>(< NUM>|< VAR >)
+	< Goto ><DOSPUNTOS >(< NUM>|var()) < COMA>(< NUM>|var())
 	}
 
 	void move():
 	{ }
 	{
-	< Move ><DOSPUNTOS >(< NUM>|< VAR >)
+	< Move ><DOSPUNTOS >(< NUM>|var())
 	}
 
 	void turn():
@@ -357,38 +354,38 @@ TOKEN : /* NUM & LETRAS */
 	void put():
 	{ }
 	{
-	< Put ><DOSPUNTOS >(< NUM>|< VAR >)<COMA >(< BALLOONS >|< CHIPS >)
+	< Put ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
 	}
 
 	void pick():
 	{ }
 	{
-	< Pick ><DOSPUNTOS >(< NUM>|< VAR >)<COMA >(< BALLOONS >|< CHIPS >)
+	< Pick ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
 	}
 
 	void moveToThe():
 	{ }
 	{
-	< MoveToThe ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><DIR >
+	< MoveToThe ><DOSPUNTOS >(< NUM>|var())<COMA ><DIR >
 	}
 
 	void moveInDir():
 	{ }
 	{
-	< MoveInDir ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><CARD >
+	< MoveInDir ><DOSPUNTOS >(< NUM>|var())<COMA ><CARD >
 	}
 
 
 	void jumpToThe():
 	{ }
 	{
-	< JumpToThe ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><DIR >
+	< JumpToThe ><DOSPUNTOS >(< NUM>|var())<COMA ><DIR >
 	}
 
 	void jumpInDir():
 	{ }
 	{
-	< JumpInDir ><DOSPUNTOS >(< NUM>|< VAR >)<COMA ><CARD >
+	< JumpInDir ><DOSPUNTOS >(< NUM>|var())<COMA ><CARD >
 	}
 
 	void nop():
