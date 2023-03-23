@@ -63,6 +63,21 @@ SKIP:
 	| "\n"
 }
 
+TOKEN: /* Nombres de Comandos */
+{
+
+			<MOV:  "Mov">
+		| 	<RIGHT: "RIGHT">
+		| 	<PUT: "Put">
+		| 	<PICK: "Pick">
+		|  < POP: "Pop" >
+		|  <GO: "GO" >
+        |  < HOP:  "HOP" >		
+
+}
+
+
+
 TOKEN : /* PARENTESIS */
 {
 < AC:"[" >
@@ -167,18 +182,74 @@ TOKEN : /* NUM & LETRAS */
 	{	
 		
 		int x,y;
-		salida=new String();
+		salida=new String();}
 
-	}
+		{
+		  (
+		  (
+		   <RIGHT> "(" ")" {world.turnRight();salida = "Command: Turnright";}
+		| 	<MOV>  "(" x=num() ")" {world.moveForward(x,false);salida = "Command: Moveforward ";}  
+		| 	<HOP>  "(" x=num() ")" {world.moveForward(x,true);salida = "Command:Jumpforward ";}
+		| 	<GO>  "(" x=num() "," y=num()")" {world.setPostion(x,y);salida = "Command:GO ";}  
+		|  <PUT> "("  put() ")"					  			
+		|  <PICK> "(" get()  ")"	
+	    |  < POP > "(" x=num() ")" {world.popBalloons(x); salida = "Comando:  Pop";}
+		) ";" 
+
+		{
+		    try {
+	    			 Thread.sleep(900);
+	    	    } catch (InterruptedException e) {
+	    			        System.err.format("IOException: %s%n", e);
+	    		    }
+	    			 
+			sistema.printOutput(salida);
+			return true;
+		})+
+
+    	| <EOF> {return false;} 
+
 
 	
-	{
+| (	  
 
 		< ROBOT_R > (varDec())? <PROCS> (funcDef())* < AC > programa()< CC > /* no se como hacer que se guarden globalmente las var*/
 {
   return true;
 }
 	  
+)
+}
+
+
+	void get() :
+	{
+		int f=1;	
+	}
+	{
+		( <CHIPS>   "," f=num() {world.pickChips(f);salida = "Command:  Pick chips";})
+		|  	  ( <BALLOONS>   "," f=num() {world.grabBalloons(f);salida="Command:  Pick balloons";})	 
+
+	}
+
+
+	int num() throws Error:
+	{	
+		int total=1;
+	}
+	{
+		<NUM>
+		{
+			try 
+			{
+				total = Integer.parseInt(token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
 	}
 
 	/* var dec */
@@ -378,15 +449,19 @@ TOKEN : /* NUM & LETRAS */
 	}
 
 	void put():
-	{ }
 	{
-	< Put ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
+		int f=1;	
+	}
+	{
+	< Put ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS > f=num() {world.putBalloons(f); salida = "Command:  Put Balloons";}|f=num()< CHIPS >{world.putChips(f); salida = "Command:  Put Chips"; }
+	)
 	}
 
 	void canPut():
 	{ }
 	{
-	< canPut ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
+	< canPut ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >) 
+	
 	}
 
 	void pick():
