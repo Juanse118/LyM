@@ -31,6 +31,7 @@ import java.awt.Point;
 import java.io.*;
 import java.util.Vector;
 import java.util.LinkedList;
+import java.util.HashMap;
 
 @SuppressWarnings("serial")
 public class Robot 
@@ -41,13 +42,14 @@ public class Robot
 
 	static HashMap<String,Integer > Vars= new HashMap<String,Integer >();
 
-	static HashMap<String,String > Funcs= new HashMap<String,Integer >();
+	static HashMap<String,Integer > Funcs= new HashMap<String,Integer >();
 
-	static HashMap<String,Integer > VarsActuales= Vars;
+	static HashMap<String,Integer > VarsActuales= new HashMap<String,Integer >();
+
 	
-	void setWorld(RobotWorld w) {
-		world = (RobotWorldDec) w;	
-	}
+		void setWorld(RobotWorld w) {
+			world = (RobotWorldDec) w;	
+		}
 
 	String salida=new String();
 }
@@ -81,7 +83,7 @@ TOKEN: /* Cmds nuevos */
 {
 
 			<AssignTo:  "assignTo">
-		| 	<Goto: "goto">
+		| 	<Goto: "goTo">
 		| 	<Move: "move">
 		| 	<Turn: "turn">
 		|  < Face: "face" >
@@ -111,15 +113,14 @@ TOKEN: /* Condicionales */
 TOKEN: /* Condiciones */
 {
 
-		< COND: ("facing" 
-		| "canPut" 
-		| "canPick" 
-		| "canMoveInDir" 
-		|  "canJumpInDir" 
-		|  "canMoveToThe" 
-        |  "canJumpToThe") > 
+		< facing: "facing" >
+		|  <canPut:"canPut" >
+		|  < canPick:"canPick" > 
+		|  < canMoveInDir:"canMoveInDir" >
+		|  < canJumpInDir:"canJumpInDir" >
+		|  < canMoveToThe:"canMoveToThe" >
+        |  < canJumpToThe:"canJumpToThe" > 
         | < NOT:  "not" >
-        	
 }
 
 TOKEN: /*Cardinales/directions*/
@@ -173,8 +174,10 @@ TOKEN : /* NUM & LETRAS */
 	
 	{
 
-		< ROBOT_R >(varDec(Vars))?< PROCS> (funcDef())* < AC >programa()< CC > /* no se como hacer que se guarden globalmente las var*/
-
+		< ROBOT_R > (varDec())? <PROCS> (funcDef())* < AC > programa()< CC > /* no se como hacer que se guarden globalmente las var*/
+{
+  return true;
+}
 	  
 	}
 
@@ -183,13 +186,15 @@ TOKEN : /* NUM & LETRAS */
 	void varDec():
 	{ }
 	{
-	< VARS >(<NOM > {  String variables = token.image;
+	 < VARS > <NOM > { String variables = token.image;
 	Vars.put(variables,null);
+	VarsActuales.put(variables,null);
 
-	} <COMA >)*< NOM >
-	{  String variables = token.image;
-	Vars.put(variables,null);
-	}<PUNTOC >
+	}(< COMA > <NOM >{  String variables2 = token.image;
+	Vars.put(variables2,null);
+	VarsActuales.put(variables2,null);
+	})* < PUNTOC >
+	
 
 
 	}
@@ -199,16 +204,18 @@ TOKEN : /* NUM & LETRAS */
 	{ }
 	{
 	< NOM > {
-	  	valor = null;
-		if (VarsActuales.ContainsKey(token.image)) {
-		  Integer valor = VarsActuales.getValue(token.image);
+	  	//Integer valor = null;
+		if (VarsActuales.containsKey(token.image)) {
+		  Integer valor = VarsActuales.get(token.image);
 		  if (valor.equals(null)) {
 		    System.out.println("No se ha asignado un valor a la variable");
 			throw new ParseException("Variable vacia");
+			
 		  }
 		}else {
 			System.out.println("Variable llamada antes de ser instanciada");
 			throw new ParseException("Variable no existe");
+			
 		  }
 			
 	  }
@@ -222,11 +229,15 @@ TOKEN : /* NUM & LETRAS */
 	/*ArrayList< String> varLocales = new ArrayList<String >*/;}
 	{
 	< NOM > { nombre = token.image; }<AC ><BARRA >((< NOM > { count += 1;
-	/*varLocales.add(token.image)*/ VarsActuales.put(nombre,token.image);
+	/*varLocales.add(token.image)*/ VarsActuales.put(nombre,Integer.parseInt(token.image));
 	 }<COMA >)*< NOM> { count += 1;
-	/*varLocales.add(token.image)*/VarsActuales.put(nombre,token.image);
+	/*varLocales.add(token.image)*/VarsActuales.put(nombre,Integer.parseInt(token.image));
 	Funcs.put(nombre,count);
-	 })?<BARRA >(cuerpo())* { VarsActuales = Vars; }<CC >
+	 })?<BARRA >(cuerpo())* { /*VarsActuales = Vars; */}< CC >
+	 {
+	   VarsActuales.clear();
+	   VarsActuales.putAll(Vars);
+	 }
 }
 
 	/* programa real */
@@ -234,21 +245,25 @@ TOKEN : /* NUM & LETRAS */
 	void programa():
 	{ }
 	{
-	((cuerpo() < PUNTOC >|funcionE()< PUNTOC >)*(cuerpo()|funcionE()))?
+	(	  (cuerpo()| funcionE())(< PUNTOC > (cuerpo()| funcionE())*))?
+
+	
+	//((cuerpo() < PUNTOC >|funcionE()< PUNTOC >)*(cuerpo()|funcionE()))?
 	}
 
 	/* Revisar funcion extra */
 
 	void funcionE():
 	{String nomFunc = null;
-	String cuerpoFunc = null;
+	Integer cuerpoFunc = null;
 	Integer count = 0; }
 	{
 	< NOM > { nomFunc = token.image;
 	if (Funcs.containsKey(nomFunc)) {
-		cuerpoFunc = Funcs.getValue(nomFunc);
+		cuerpoFunc = Funcs.get(nomFunc);
 	} else { System.out.println("Funcion llamada antes de declaracion");
-			throw new ParseException("Funcion llamada antes de declaracion"); }
+			throw new ParseException("Funcion llamada antes de declaracion");
+			}
 
 
 	}<DOSPUNTOS >((<NUM > {
@@ -261,6 +276,7 @@ TOKEN : /* NUM & LETRAS */
 	if (!count.equals(cuerpoFunc)) {
 		System.out.println("Parametros incorrectos");
 		throw new ParseException("Parametros incorrectos");
+		
 	}
 	}
 	}
@@ -292,26 +308,34 @@ TOKEN : /* NUM & LETRAS */
 	void conditional():
 	{ }
 	{
-	< If ><DOSPUNTOS >(< NOT >)?<COND ><Then ><DOSPUNTOS >cuerpo()< Else ><DOSPUNTOS >cuerpo()
+	< If ><DOSPUNTOS >(< NOT >)? condicionesGenerales() <Then ><DOSPUNTOS > <AC > cuerpo()(< PUNTOC > cuerpo())* < CC > < Else ><DOSPUNTOS > <AC > cuerpo()(< PUNTOC > cuerpo())* < CC >
 	}
 
 	void loop():
 	{ }
 	{
-	< While ><DOSPUNTOS >(< NOT >)?<COND ><Do ><DOSPUNTOS >cuerpo()
+	< While ><DOSPUNTOS >(< NOT >)? condicionesGenerales() < Do > <DOSPUNTOS > <AC > cuerpo()(< PUNTOC > cuerpo())* < CC >
+	}
+
+	void condicionesGenerales():
+	{
+	}
+	{
+	 (canPut()|canPick()|canMoveInDir()|canJumpInDir()|canMoveToThe()|canJumpToThe()	 ) 
 	}
 
 	void rep():
 	{ }
 	{
-	< Repeat ><DOSPUNTOS >(< NUM>|var())cuerpo()
+	< Repeat ><DOSPUNTOS >(< NUM>|var()) < AC > cuerpo()(< PUNTOC > cuerpo())* < CC >
 	}
 	
 
 	/* definicion estructura cmds */
 
 	void assignTo():
-	{ Integer val = null;}
+	{ //Integer val = null;
+	}
 	{
 	< AssignTo ><DOSPUNTOS >(< NUM>|var())
 	{
@@ -321,7 +345,9 @@ TOKEN : /* NUM & LETRAS */
 	{
 	String nom = token.image;
 	if (Vars.containsKey(nom)) { 
-		Vars.put(nom,val);}
+		Vars.put(nom,val);
+		VarsActuales.put(nom,val); //REVISAR
+		} 
 	}
 	}
 
@@ -357,10 +383,22 @@ TOKEN : /* NUM & LETRAS */
 	< Put ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
 	}
 
+	void canPut():
+	{ }
+	{
+	< canPut ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
+	}
+
 	void pick():
 	{ }
 	{
 	< Pick ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
+	}
+
+	void canPick():
+	{ }
+	{
+	< canPick ><DOSPUNTOS >(< NUM>|var())<COMA >(< BALLOONS >|< CHIPS >)
 	}
 
 	void moveToThe():
@@ -369,17 +407,35 @@ TOKEN : /* NUM & LETRAS */
 	< MoveToThe ><DOSPUNTOS >(< NUM>|var())<COMA ><DIR >
 	}
 
+	void canMoveToThe():
+	{ }
+	{
+	< canMoveToThe ><DOSPUNTOS >(< NUM>|var())<COMA ><DIR >
+	}
+	
+
 	void moveInDir():
 	{ }
 	{
 	< MoveInDir ><DOSPUNTOS >(< NUM>|var())<COMA ><CARD >
 	}
 
+	void canMoveInDir():
+	{ }
+	{
+	< canMoveInDir ><DOSPUNTOS >(< NUM>|var())<COMA ><CARD >
+	}
 
 	void jumpToThe():
 	{ }
 	{
 	< JumpToThe ><DOSPUNTOS >(< NUM>|var())<COMA ><DIR >
+	}
+
+	void canJumpToThe():
+	{ }
+	{
+	< canJumpToThe ><DOSPUNTOS >(< NUM>|var())<COMA ><DIR >
 	}
 
 	void jumpInDir():
@@ -388,8 +444,15 @@ TOKEN : /* NUM & LETRAS */
 	< JumpInDir ><DOSPUNTOS >(< NUM>|var())<COMA ><CARD >
 	}
 
+	void canJumpInDir():
+	{ }
+	{
+	< canJumpInDir ><DOSPUNTOS >(< NUM>|var())<COMA ><CARD >
+	}
+	
+
 	void nop():
 	{}
 	{
-	<Nop>
+	<Nop> <DOSPUNTOS >
 	}
